@@ -1,0 +1,56 @@
+{
+  "variables": {
+    "aws_access_key": "",
+    "aws_secret_key": "",
+    "region": "us-east-1",
+    "source_ami": "ami-024a64a6685d05041",
+    "ssh_username": "ubuntu",
+    "ami_description": "EC2 AMI freeswitch Ubuntu 18.04", 
+    "instance_type": "t2.medium",
+    "freeswitch_version": "v1.8.5",
+    "sip_port": "5060",
+    "dtls_sip_port": "5061",
+    "build_with_grpc": "false",
+    "freeswitch_bind_cloud_ip": "true",
+    "cloud_provider": "aws"
+  },
+  "builders": [{
+    "type": "amazon-ebs",
+    "access_key": "{{user `aws_access_key`}}",
+    "secret_key": "{{user `aws_secret_key`}}",
+    "region": "{{user `region`}}",
+    "source_ami": "{{user `source_ami`}}",
+    "instance_type": "{{user `instance_type`}}",
+    "ssh_username": "{{user `ssh_username`}}",
+    "ami_name": "drachtio-freeswitch-{{user `freeswitch_version`}}-{{isotime |clean_resource_name}}",
+    "ami_description": "{{user `ami_description`}}", 
+    "tags": {
+      "role": "freeswitch"
+    },
+    "run_tags": {
+      "role": "freeswitch"
+    }
+  }],
+  "provisioners": [
+    {
+      "type": "shell",
+      "inline": [
+        "while [ ! -f /var/lib/cloud/instance/boot-finished ]; do echo 'Waiting for cloud-init...'; sleep 1; done",
+        "sudo apt-get update",
+        "sudo apt-get -y install python"
+      ]
+    },
+    {
+      "type": "ansible",
+      "playbook_file": "./playbooks/freeswitch.yaml",
+      "extra_arguments": [ "--ssh-extra-args", "-o IdentitiesOnly=yes",
+        "--extra-vars", "freeswitch_version={{user `freeswitch_version`}}",
+        "--extra-vars", "freeswitch_sip_port={{user `sip_port`}}",
+        "--extra-vars", "freeswitch_dtls_sip_port={{user `dtls_sip_port`}}",
+        "--extra-vars", "build_with_grpc={{user `build_with_grpc`}}",
+        "--extra-vars", "freeswitch_bind_cloud_ip={{user `freeswitch_bind_cloud_ip`}}",
+        "--extra-vars", "cloud_provider={{user `cloud_provider`}}" 
+      ]
+    }
+  ]
+}
